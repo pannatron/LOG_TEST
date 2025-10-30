@@ -35,6 +35,42 @@ x_idx = np.clip(x_idx, 0, width - 1)
 y_idx = np.clip(y_idx, 0, height - 1)
 ```
 
+**คำอธิบาย NumPy Functions:**
+
+#### `np.ceil()` - ปัดเลขขึ้น
+```python
+np.ceil(3.2)  # = 4.0
+np.ceil(3.8)  # = 4.0
+np.ceil(-2.1) # = -2.0
+
+# ในโค้ด:
+width = int(np.ceil((50.7 - 0.0) / 0.125))
+# = int(np.ceil(405.6))
+# = int(406.0)
+# = 406 pixels
+```
+**ทำไมต้องใช้?** เพื่อให้ grid ใหญ่พอครอบคลุมทุกจุด (ถ้าใช้ floor อาจมีจุดตกหล่น)
+
+#### `.astype(int)` - แปลงชนิดข้อมูล
+```python
+arr = np.array([1.2, 3.7, 5.9])
+arr.astype(int)  # = [1, 3, 5] (ตัดทศนิยมทิ้ง)
+```
+
+#### `np.clip()` - จำกัดค่าให้อยู่ในช่วง [min, max]
+```python
+# Syntax: np.clip(array, min_value, max_value)
+np.clip([0, 5, 10, -3, 320], 0, 319)
+# = [0, 5, 10, 0, 319]
+#            ↑     ↑
+#          ตัดเป็น 0  ตัดเป็น 319
+
+# ในโค้ด: ป้องกันไม่ให้ index เกินขอบ grid
+x_idx = np.clip([0, 5, 320, -1], 0, 319)
+# = [0, 5, 319, 0]  ← ปลอดภัย ไม่ index out of bounds!
+```
+**ทำไมต้องใช้?** ป้องกัน error เวลา access array นอกขอบเขต
+
 **ตัวอย่าง:**
 ```
 Point ที่พิกัด (X=10.0, Y=20.0, Z=5.0)
@@ -71,6 +107,49 @@ Point ที่ (row=160, col=80)
 # นับจำนวนจุดในแต่ละ pixel (OPTIMIZED!)
 flat_density = np.bincount(linear_idx, minlength=height*width)
 channels[:, :, 0] = flat_density.reshape(height, width)
+```
+
+**คำอธิบาย NumPy Functions:**
+
+#### `np.bincount()` - นับความถี่ของแต่ละค่าใน array
+```python
+# Syntax: np.bincount(x, weights=None, minlength=0)
+
+# ตัวอย่างเบื้องต้น:
+arr = np.array([0, 1, 1, 2, 2, 2])
+count = np.bincount(arr)
+# = [1, 2, 3]
+#    ↑  ↑  ↑
+#   0  1  2  ← index (ค่าใน arr)
+#   เจอ 1 ครั้ง, 2 ครั้ง, 3 ครั้ง
+
+# ตัวอย่างกับ minlength:
+arr = np.array([0, 2])
+np.bincount(arr, minlength=5)
+# = [1, 0, 1, 0, 0]  ← ยาว 5 ช่อง (บังคับด้วย minlength)
+```
+
+**ทำไมเร็ว?** เพราะเป็น C implementation ไม่ใช่ Python loop!
+
+#### `np.reshape()` - เปลี่ยนรูปร่าง array
+```python
+# Syntax: array.reshape(new_shape)
+
+# ตัวอย่าง:
+arr_1d = np.array([1, 2, 3, 4, 5, 6])
+arr_2d = arr_1d.reshape(2, 3)
+# = [[1, 2, 3],
+#    [4, 5, 6]]
+
+arr_2d = arr_1d.reshape(3, 2)
+# = [[1, 2],
+#    [3, 4],
+#    [5, 6]]
+
+# ในโค้ด:
+flat_density.reshape(height, width)
+# จาก [height*width] → [height, width]
+# จาก [102400] → [320, 320]
 ```
 
 **วิธีการทำงานของ `np.bincount()`:**
@@ -114,6 +193,38 @@ if normalize:
             channels[:, :, c] = (channel - channel.min()) / (channel.max() - channel.min())
 ```
 
+**คำอธิบาย NumPy Functions:**
+
+#### `.min()` และ `.max()` - หาค่าต่ำสุด/สูงสุด
+```python
+arr = np.array([3, 7, 1, 9, 2])
+
+arr.min()  # = 1 (ค่าต่ำสุด)
+arr.max()  # = 9 (ค่าสูงสุด)
+
+# ใช้กับ axis:
+arr_2d = np.array([[1, 5, 3],
+                   [2, 8, 1]])
+
+arr_2d.min()         # = 1 (ทั้ง array)
+arr_2d.min(axis=0)   # = [1, 5, 1] (แต่ละ column)
+arr_2d.min(axis=1)   # = [1, 1] (แต่ละ row)
+```
+
+**Min-Max Normalization สูตร:**
+```
+normalized = (value - min) / (max - min)
+
+ตัวอย่าง: [10, 50, 100]
+min = 10, max = 100
+
+(10 - 10) / (100 - 10) = 0/90 = 0.00
+(50 - 10) / (100 - 10) = 40/90 = 0.44
+(100 - 10) / (100 - 10) = 90/90 = 1.00
+
+→ [0.00, 0.44, 1.00]
+```
+
 **ก่อน normalize:**
 ```
 density = [0, 5, 10, 15, ..., 100]  (จำนวนจุดจริง)
@@ -142,6 +253,39 @@ for c, name in enumerate(channel_names):
     # บันทึกเป็น .png
     img_path = os.path.join(channel_dir, f"{name}.png")
     cv2.imwrite(img_path, channel_normalized)
+```
+
+**คำอธิบาย NumPy Functions:**
+
+#### `np.zeros_like()` - สร้าง array เต็มด้วย 0 ขนาดเท่ากับ array อ้างอิง
+```python
+# Syntax: np.zeros_like(array, dtype=None)
+
+original = np.array([[1, 2, 3],
+                     [4, 5, 6]])
+
+zeros = np.zeros_like(original)
+# = [[0, 0, 0],
+#    [0, 0, 0]]  ← รูปร่างเหมือน original
+
+# กำหนด dtype:
+zeros_uint8 = np.zeros_like(original, dtype=np.uint8)
+# = [[0, 0, 0],
+#    [0, 0, 0]]  ← แต่เป็น uint8 (0-255)
+```
+
+**ทำไมต้องใช้?** กรณีที่ channel มีค่าเดียวกันทั้งหมด (เช่น ทุก pixel = 0) จะหาร 0/0 ได้ NaN ดังนั้นใช้ zeros_like แทน
+
+#### `np.uint8` - ชนิดข้อมูลจำนวนเต็มไม่มีติดลบ 8-bit (0-255)
+```python
+# ภาพ PNG ใช้ค่า 0-255 เท่านั้น
+arr_float = np.array([0.0, 0.5, 1.0])
+arr_uint8 = (arr_float * 255).astype(np.uint8)
+# = [0, 127, 255]
+
+# ถ้าไม่ convert จะผิดพลาด:
+np.array([300]).astype(np.uint8)  # = [44] ← overflow!
+np.array([-5]).astype(np.uint8)   # = [251] ← wraparound!
 ```
 
 **การแปลงค่า:**
@@ -247,6 +391,114 @@ input_tensor = np.stack([
     z_mean,       # Channel 1: ความสูงเฉลี่ย
     hag_mean      # Channel 2: ความสูงเหนือพื้น
 ], axis=-1)  # Shape: (320, 320, 3)
+```
+
+## NumPy Functions Reference (สรุป)
+
+### การจัดการ Array Structure
+
+#### `np.vstack()` - Stack arrays แนวตั้ง (vertical)
+```python
+# จาก load_pointcloud: รวม X, Y, Z เป็น Nx3
+x = np.array([1, 2, 3])
+y = np.array([4, 5, 6])
+z = np.array([7, 8, 9])
+
+points = np.vstack((x, y, z)).T
+# ขั้นตอน:
+# 1. vstack: [[1, 2, 3],    ← x
+#             [4, 5, 6],    ← y
+#             [7, 8, 9]]    ← z
+#
+# 2. .T (transpose): [[1, 4, 7],  ← point 1
+#                     [2, 5, 8],  ← point 2
+#                     [3, 6, 9]]  ← point 3
+```
+
+#### `np.zeros()` - สร้าง array เต็มด้วย 0
+```python
+np.zeros((3, 4))
+# = [[0, 0, 0, 0],
+#    [0, 0, 0, 0],
+#    [0, 0, 0, 0]]
+
+np.zeros((320, 320, 6), dtype=np.float32)
+# = array ขนาด 320×320×6 ทุกค่าเป็น 0.0
+```
+
+#### `np.arange()` - สร้างลำดับเลข
+```python
+np.arange(5)       # = [0, 1, 2, 3, 4]
+np.arange(2, 7)    # = [2, 3, 4, 5, 6]
+np.arange(0, 10, 2) # = [0, 2, 4, 6, 8] (step=2)
+```
+
+### การจัดการค่าพิเศษ
+
+#### `np.nan_to_num()` - แปลง NaN/Inf เป็นเลขปกติ
+```python
+arr = np.array([1.0, np.nan, np.inf, -np.inf, 5.0])
+np.nan_to_num(arr)
+# = [1.0, 0.0, 1.79e+308, -1.79e+308, 5.0]
+#         ↑    ↑          ↑
+#       NaN→0  Inf→large  -Inf→large negative
+
+# ในโค้ด: ป้องกัน error จากการหาร 0/0
+np.nan_to_num(arr, 0)  # แทน NaN/Inf ด้วย 0
+```
+
+#### `np.errstate()` - ปิด warning ชั่วคราว
+```python
+# กรณีปกติ: หาร 0 จะมี warning
+a = np.array([1, 0])
+b = 1 / a  # RuntimeWarning: divide by zero
+
+# ใช้ errstate ปิด warning:
+with np.errstate(divide='ignore', invalid='ignore'):
+    b = 1 / a  # ไม่มี warning
+# = [1., inf]
+```
+
+### การจัดการ Index
+
+#### `np.where()` - หา index ที่ตรงเงื่อนไข
+```python
+arr = np.array([1, 5, 3, 8, 2])
+indices = np.where(arr > 3)
+# = (array([1, 3]),)  ← index 1 และ 3 มีค่า > 3
+
+# ใช้ 2D:
+arr_2d = np.array([[1, 5],
+                   [3, 8]])
+y, x = np.where(arr_2d > 3)
+# y = [0, 1]  ← row indices
+# x = [1, 1]  ← col indices
+# ตำแหน่ง: (0,1)=5 และ (1,1)=8
+```
+
+### SciPy Functions ที่ใช้
+
+#### `ndimage.maximum()` / `ndimage.minimum()` - หาค่า max/min แบบ grouped
+```python
+from scipy import ndimage
+
+values = np.array([5, 10, 3, 8, 2, 7])
+indices = np.array([0, 0, 1, 1, 2, 2])
+
+# หา max แต่ละกลุ่ม:
+max_vals = ndimage.maximum(values, indices, index=[0, 1, 2])
+# = [10, 8, 7]
+#    ↑   ↑  ↑
+#  group 0: max(5,10)=10
+#  group 1: max(3,8)=8
+#  group 2: max(2,7)=7
+```
+
+**ใช้ใน rasterization:**
+```python
+# หา z_max แต่ละ pixel
+z_max = ndimage.maximum(z_values, linear_idx, 
+                        index=np.arange(height*width))
 ```
 
 ## Optimization ที่สำคัญ
